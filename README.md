@@ -1,56 +1,61 @@
-# Twitter Poll Bot
+# Twitter ポール投稿ボット
 
-A TypeScript bot that creates and posts polls on Twitter/X using the Twitter API v2.
+Twitter/X API v2を使用して、投票付きツイートを自動投稿するTypeScriptボットです。
 
-## Features
+## 機能
 
-- Immediate poll creation on execution
-- Customizable poll options (up to 4 choices)
-- Configurable poll duration
-- Error handling with automatic retries
-- Comprehensive logging
-- Full TypeScript support with type definitions
+- 実行時に即座にポール（投票）を投稿
+- 最大4つまでの選択肢をカスタマイズ可能
+- 投票期間の設定が可能
+- エラー発生時の自動リトライ機能
+- 詳細なログ出力
+- TypeScriptによる型定義完備
 
-## Prerequisites
+## 必要要件
 
-- Node.js 14 or higher
-- Twitter Developer Account with API v2 access
-- Twitter API credentials (API key, API secret, Access token, Access token secret)
+- Node.js 14以上
+- Twitter Developer アカウント（API v2アクセス権限付き）
+- Twitter API認証情報（APIキー、シークレット、アクセストークン）
 
-## Twitter API Setup
+## Twitter API設定手順
 
-To avoid 403 errors, make sure your Twitter Developer App is properly configured:
+403エラーを防ぐため、Twitter Developer Portalで以下の設定が必要です：
 
-1. Go to the [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
-2. Select your app
-3. Go to "Settings" > "User authentication settings"
-4. Enable OAuth 1.0a
-5. Set App permissions to "Read and write"
-6. Generate or regenerate your access tokens
-   - Make sure to generate access tokens with the same permissions as your app
-   - If you changed permissions, you need new tokens
+1. User authentication settings にて：
+   - OAuth 1.0a を有効化
+   - App permissions を "Read and write" に設定
+   - Type of App を "Native App" に設定
+   - Callback URL に `http://127.0.0.1` を設定
+   - Website URL には以下のいずれかを設定：
+     * GitHubリポジトリURL（推奨）
+     * `http://127.0.0.1`（開発用）
+     * `https://example.com`（テスト用）
 
-Without these settings, you'll get a 403 error when trying to create polls.
+2. Keys and tokens にて：
+   - Consumer Keys (APIキーとシークレット)を取得
+   - Access Token and Secret を生成
+     * 生成時に"Read and write"権限を付与することを確認
+     * 権限を変更した場合は、新しいトークンを生成する必要があります
 
-## Installation
+## インストール方法
 
-1. Clone the repository:
+1. リポジトリのクローン：
 ```bash
 git clone https://github.com/yourusername/twitter-poll-bot.git
 cd twitter-poll-bot
 ```
 
-2. Install dependencies:
+2. 依存パッケージのインストール：
 ```bash
 npm install
 ```
 
-3. Copy the environment variables template:
+3. 環境変数テンプレートのコピー：
 ```bash
 cp .env.example .env
 ```
 
-4. Configure your environment variables in `.env`:
+4. `.env`ファイルの設定：
 ```env
 TWITTER_API_KEY=your_api_key
 TWITTER_API_SECRET=your_api_secret
@@ -60,60 +65,61 @@ POLL_DEFAULT_DURATION_HOURS=24
 LOG_LEVEL=info
 ```
 
-## Building and Running
+## ビルドと実行
 
-Build the TypeScript code:
+TypeScriptコードのビルド：
 ```bash
 npm run build
 ```
 
-Run the bot to post a poll immediately:
+ボットの実行（即座にポールを投稿）：
 ```bash
 npm start
 ```
 
-## Error Handling
+## 使用例
 
-The bot includes comprehensive error handling for common issues:
+### 基本的な使用方法
 
-### 403 Forbidden Error
-If you get a 403 error, check:
-- App permissions are set to "Read and write"
-- OAuth 1.0a is enabled
-- Access tokens were generated after setting the correct permissions
-- Access tokens have the same permission level as the app
+```typescript
+import TwitterPollBot from './src/TwitterPollBot.js';
 
-### 401 Unauthorized Error
-If you get a 401 error:
-- Verify your API keys and tokens are correct
-- Make sure tokens haven't expired
-- Check if tokens were revoked
+const bot = new TwitterPollBot({
+  apiKey: process.env.TWITTER_API_KEY!,
+  apiSecret: process.env.TWITTER_API_SECRET!,
+  accessToken: process.env.TWITTER_ACCESS_TOKEN!,
+  accessSecret: process.env.TWITTER_ACCESS_SECRET!,
+  defaultDurationHours: 24
+});
 
-### 429 Rate Limit Error
-If you get a 429 error:
-- Wait before trying again
-- The bot includes automatic retry logic with backoff
+// ポールの投稿
+await bot.createPoll({
+  title: "好きなプログラミング言語は？",
+  options: ['JavaScript', 'Python', 'Java', 'C++'],
+  durationHours: 24
+});
+```
 
-## Project Structure
+## プロジェクト構造
 
 ```
 .
 ├── src/
-│   ├── index.ts           # Main entry point
-│   ├── TwitterPollBot.ts  # Bot implementation
+│   ├── index.ts           # メインエントリーポイント
+│   ├── TwitterPollBot.ts  # ボット実装
 │   └── utils/
-│       └── logger.ts      # Logging configuration
-├── dist/                  # Compiled JavaScript output
-├── logs/                  # Log files
-├── .env.example          # Environment variables template
-├── .env                  # Local environment variables (git-ignored)
-├── tsconfig.json        # TypeScript configuration
-└── README.md            # Project documentation
+│       └── logger.ts      # ログ設定
+├── dist/                  # コンパイル済みJavaScriptファイル
+├── logs/                  # ログファイル
+├── .env.example          # 環境変数テンプレート
+├── .env                  # 環境変数（gitignore対象）
+├── tsconfig.json        # TypeScript設定
+└── README.md            # プロジェクトドキュメント
 ```
 
-## Type Definitions
+## 型定義
 
-The project includes TypeScript interfaces for all major components:
+主要なコンポーネントの型定義：
 
 ```typescript
 interface TwitterConfig {
@@ -131,44 +137,24 @@ interface PollData {
 }
 ```
 
-## Security Best Practices
+## エラーハンドリング
 
-1. **Environment Variables**
-   - Never commit the `.env` file
-   - Use environment variables for all sensitive data
-   - Rotate API credentials regularly
+よくあるエラーとその対処方法：
 
-2. **Error Handling**
-   - All API calls are wrapped in try-catch blocks with proper typing
-   - Failed operations are logged for debugging
-   - Automatic retries for transient failures
+### 403 Forbidden エラー
+以下を確認してください：
+- App permissions が "Read and write" に設定されているか
+- OAuth 1.0a が有効になっているか
+- アクセストークンが正しい権限で生成されているか
+- Type of App が "Native App" に設定されているか
+- Callback URL が `http://127.0.0.1` に設定されているか
 
-3. **Rate Limiting**
-   - The bot respects Twitter API rate limits
-   - Implements exponential backoff for retries
+### 401 Unauthorized エラー
+以下を確認してください：
+- APIキーとシークレットが正しいか
+- アクセストークンが有効期限切れでないか
+- トークンが取り消されていないか
 
-4. **Logging**
-   - Sensitive data is never logged
-   - Logs are rotated to prevent disk space issues
-   - Different log levels for different environments
-
-## Troubleshooting
-
-If you encounter issues:
-
-1. Check the logs in the `logs/` directory
-2. Verify Twitter API permissions in the Developer Portal
-3. Ensure your tokens have the correct permissions
-4. Look for rate limiting information in error messages
-
-## License
-
-ISC
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
+### 429 Rate Limit エラー
+- API制限に達した場合は、しばらく待ってから再試行
+- ボットには自動リトライ機能が組み込まれています
