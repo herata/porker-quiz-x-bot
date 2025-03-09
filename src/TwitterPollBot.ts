@@ -36,7 +36,7 @@ export default class TwitterPollBot {
     }).filter(([_, value]) => !value).map(([key]) => key);
 
     if (missingCredentials.length > 0) {
-      throw new Error(`Missing Twitter credentials: ${missingCredentials.join(', ')}
+      throw new Error(`Missing X API credentials: ${missingCredentials.join(', ')}
 Please ensure you have:
 1. Enabled OAuth 1.0a in Developer Portal
 2. Set App permissions to "Read and write"
@@ -57,18 +57,18 @@ Please ensure you have:
   }
 
   /**
-   * Verify Twitter credentials
+   * Verify X API credentials
    */
   async verifyCredentials(): Promise<void> {
     try {
       // Get own user information using app credentials
       const { data } = await this.client.v2.me();
-      logger.info('Twitter credentials verified successfully', { userId: data.id });
+      logger.info('X API credentials verified successfully', { userId: data.id });
     } catch (error) {
       if (error instanceof ApiResponseError) {
         if (error.code === 401) {
           throw new Error(
-            'Invalid Twitter credentials. Please check:\n' +
+            'Invalid X API credentials. Please check:\n' +
             '1. API Key and Secret are correct\n' +
             '2. Access Token and Secret are correct\n' +
             '3. Tokens have not expired or been revoked'
@@ -90,9 +90,9 @@ Please ensure you have:
   }
 
   /**
-   * Create a poll tweet
+   * Create a poll post
    * @param pollData Poll configuration
-   * @returns Created poll tweet data
+   * @returns Created poll data
    */
   async createPoll(pollData: PollData): Promise<unknown> {
     try {
@@ -128,7 +128,7 @@ Please ensure you have:
 
     } catch (error) {
       if (error instanceof ApiResponseError) {
-        logger.error('Twitter API error', {
+        logger.error('X API error', {
           code: error.code,
           message: error.data?.detail || error.message,
           rateLimitRemaining: error.rateLimit?.remaining,

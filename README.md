@@ -1,6 +1,6 @@
-# Twitter ポール投稿ボット
+# X 投票投稿ボット
 
-Twitter/X API v2を使用して、投票付きツイートを自動投稿するTypeScriptボットです。
+X (旧Twitter) API v2を使用して、投票付きポストを自動投稿するTypeScriptボットです。
 
 ## 機能
 
@@ -14,12 +14,12 @@ Twitter/X API v2を使用して、投票付きツイートを自動投稿するT
 ## 必要要件
 
 - Node.js 14以上
-- Twitter Developer アカウント（API v2アクセス権限付き）
-- Twitter API認証情報（APIキー、シークレット、アクセストークン）
+- X Developer アカウント（API v2アクセス権限付き）
+- X API認証情報（APIキー、シークレット、アクセストークン）
 
-## Twitter API設定手順
+## X API設定手順
 
-403エラーを防ぐため、Twitter Developer Portalで以下の設定が必要です：
+403エラーを防ぐため、X Developer Portalで以下の設定が必要です：
 
 1. User authentication settings にて：
    - OAuth 1.0a を有効化
@@ -41,8 +41,8 @@ Twitter/X API v2を使用して、投票付きツイートを自動投稿するT
 
 1. リポジトリのクローン：
 ```bash
-git clone https://github.com/yourusername/twitter-poll-bot.git
-cd twitter-poll-bot
+git clone https://github.com/yourusername/x-poll-bot.git
+cd x-poll-bot
 ```
 
 2. 依存パッケージのインストール：
