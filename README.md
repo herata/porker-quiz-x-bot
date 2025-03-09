@@ -1,4 +1,4 @@
-# porker-quiz-x-bot
+# X ポール投稿ボット
 
 X (旧Twitter) API v2を使用して、画像付きの投票ポストを自動投稿するTypeScriptボットです。
 
@@ -8,6 +8,7 @@ X (旧Twitter) API v2を使用して、画像付きの投票ポストを自動�
 - 最大4つまでの選択肢をカスタマイズ可能
 - 画像の添付が可能
 - 投票期間の設定が可能
+- ハッシュタグの自動追加
 - エラー発生時の自動リトライ機能
 - 詳細なログ出力
 - TypeScriptによる型定義完備
@@ -66,6 +67,29 @@ POLL_DEFAULT_DURATION_HOURS=24
 LOG_LEVEL=info
 ```
 
+## ポールの設定
+
+`src/config/polls.ts` でポールの内容を設定できます：
+
+```typescript
+export const polls: PollConfig[] = [
+  {
+    title: "What's your favorite programming language?",
+    options: ['JavaScript', 'Python', 'Java', 'C++'],
+    durationHours: 24,
+    imagePath: path.join(process.cwd(), 'images', 'test.png'),
+    hashtags: ['programming', 'coding', 'dev']
+  },
+  // 複数のポールを追加可能
+  {
+    title: "Which framework do you prefer?",
+    options: ['React', 'Vue', 'Angular', 'Svelte'],
+    durationHours: 48,
+    hashtags: ['webdev', 'frontend']
+  }
+];
+```
+
 ## ビルドと実行
 
 TypeScriptコードのビルド：
@@ -73,52 +97,13 @@ TypeScriptコードのビルド：
 npm run build
 ```
 
-ボットの実行（即座にポールを投稿）：
+ボットの実行：
 ```bash
+# デフォルトのポールを投稿（polls配列の最初のもの）
 npm start
-```
 
-## 使用例
-
-### 基本的な使用方法
-
-```typescript
-import TwitterPollBot from './src/TwitterPollBot.js';
-
-const bot = new TwitterPollBot({
-  apiKey: process.env.TWITTER_API_KEY!,
-  apiSecret: process.env.TWITTER_API_SECRET!,
-  accessToken: process.env.TWITTER_ACCESS_TOKEN!,
-  accessSecret: process.env.TWITTER_ACCESS_SECRET!,
-  defaultDurationHours: 24
-});
-
-// 画像なしのポール
-await bot.createPoll({
-  title: "好きなプログラミング言語は？",
-  options: ['JavaScript', 'Python', 'Java', 'C++'],
-  durationHours: 24
-});
-
-// 画像付きのポール
-await bot.createPoll({
-  title: "好きなプログラミング言語は？ #programming",
-  options: ['JavaScript', 'Python', 'Java', 'C++'],
-  durationHours: 24,
-  imagePath: 'path/to/your/image.png'  // 画像ファイルのパス
-});
-```
-
-### 画像ファイルの配置
-
-画像ファイルは以下のように配置します：
-
-```
-.
-├── images/              # 画像ファイルディレクトリ
-│   └── programming.png  # 投稿に使用する画像
-├── src/
-│   └── ...
+# 特定のポールを投稿（インデックスを指定）
+npm start 1  # polls配列の2番目のポールを投稿
 ```
 
 ## プロジェクト構造
@@ -128,10 +113,11 @@ await bot.createPoll({
 ├── src/
 │   ├── index.ts           # メインエントリーポイント
 │   ├── TwitterPollBot.ts  # ボット実装
+│   ├── config/
+│   │   └── polls.ts      # ポール設定
 │   └── utils/
 │       └── logger.ts      # ログ設定
 ├── images/                # 画像ファイルディレクトリ
-├── dist/                  # コンパイル済みJavaScriptファイル
 ├── logs/                  # ログファイル
 ├── .env.example          # 環境変数テンプレート
 ├── .env                  # 環境変数（gitignore対象）
@@ -139,26 +125,22 @@ await bot.createPoll({
 └── README.md            # プロジェクトドキュメント
 ```
 
-## 型定義
+## 画像の設定
 
-主要なコンポーネントの型定義：
+画像ファイルは以下のようにimagesディレクトリに配置します：
 
-```typescript
-interface TwitterConfig {
-  apiKey: string;
-  apiSecret: string;
-  accessToken: string;
-  accessSecret: string;
-  defaultDurationHours?: number;
-}
-
-interface PollData {
-  title: string;
-  options: string[];
-  durationHours?: number;
-  imagePath?: string;  // 画像ファイルへのパス
-}
 ```
+images/
+  └── test.png  # ポールに添付する画像
+```
+
+対応している画像形式：
+- PNG
+- JPEG
+- GIF
+- WebP
+
+サイズ制限：5MB以下
 
 ## エラーハンドリング
 
@@ -183,8 +165,8 @@ interface PollData {
 - ボットには自動リトライ機能が組み込まれています
 
 ### 画像アップロードエラー
-- サポートされている画像形式（PNG, JPEG, GIF, WebP）を使用しているか確認
-- ファイルサイズが制限（5MB）を超えていないか確認
+- サポートされている画像形式を使用しているか確認
+- ファイルサイズが制限を超えていないか確認
 - ファイルパスが正しく、読み取り権限があるか確認
 
 ## セキュリティ対策

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import TwitterPollBot from './TwitterPollBot.js';
 import logger from './utils/logger.js';
+import { getDefaultPoll, getPollByIndex } from './config/polls.js';
 
 // Initialize the bot with credentials from environment variables
 const bot = new TwitterPollBot({
@@ -11,22 +12,17 @@ const bot = new TwitterPollBot({
   defaultDurationHours: Number.parseInt(process.env.POLL_DEFAULT_DURATION_HOURS ?? '24', 10)
 });
 
-// Example poll data
-const examplePoll = {
-  title: "What's your favorite programming language?",
-  options: ['JavaScript', 'Python', 'Java', 'C++'],
-  durationHours: 24
-};
+// Function to create a poll with error handling and retries
+async function createPollWithRetry(pollIndex?: number, retries = 3): Promise<void> {
+  // Get poll configuration
+  const pollConfig = pollIndex !== undefined ? getPollByIndex(pollIndex) : getDefaultPoll();
+  if (!pollConfig) {
+    throw new Error(`Poll configuration not found for index: ${pollIndex}`);
+  }
 
-// Function to create a poll with error handling
-async function createPollWithRetry(pollData: {
-  title: string;
-  options: string[];
-  durationHours?: number;
-}, retries = 3): Promise<void> {
   for (let i = 0; i < retries; i++) {
     try {
-      await bot.createPoll(pollData);
+      await bot.createPoll(pollConfig);
       return;
     } catch (error) {
       logger.error(`Poll creation attempt ${i + 1} failed`, { 
@@ -41,10 +37,13 @@ async function createPollWithRetry(pollData: {
   }
 }
 
+// Parse poll index from command line arguments
+const pollIndex = process.argv[2] ? Number(process.argv[2]) : undefined;
+
 // Immediately create a poll when the program starts
 (async () => {
   try {
-    await createPollWithRetry(examplePoll);
+    await createPollWithRetry(pollIndex);
     logger.info('Poll created successfully');
     process.exit(0);
   } catch (error) {
@@ -55,7 +54,7 @@ async function createPollWithRetry(pollData: {
   }
 })();
 
-// Handle process termination
+// Handle process termination signals
 process.on('SIGTERM', () => {
   logger.info('Received SIGTERM signal');
   process.exit(0);

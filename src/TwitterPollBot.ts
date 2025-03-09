@@ -1,5 +1,8 @@
-import { TwitterApi, ApiResponseError } from 'twitter-api-v2';
+import { TwitterApi } from 'twitter-api-v2';
+import type { ApiResponseError, SendTweetV2Params } from 'twitter-api-v2';
 import logger from './utils/logger.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 interface TwitterConfig {
   apiKey: string;
@@ -13,6 +16,7 @@ interface PollData {
   title: string;
   options: string[];
   durationHours?: number;
+  imagePath?: string; // Optional path to the image file to attach
 }
 
 interface ScheduledPoll {
@@ -57,7 +61,32 @@ Please ensure you have:
   }
 
   /**
-   * Verify X API credentials
+   * Get MIME type from file extension
+   * @param filePath Path to the image file
+   * @returns The MIME type for the given file extension
+   * @throws Error if the file extension is not supported
+   */
+  private getMimeType(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp'
+    };
+    
+    const mimeType = mimeTypes[ext];
+    if (!mimeType) {
+      throw new Error(`Unsupported image format: ${ext}. Supported formats are: PNG, JPEG, GIF, WebP`);
+    }
+    
+    return mimeType;
+  }
+
+  /**
+   * Verify X API credentials by attempting to fetch user information
+   * @throws Error if credentials are invalid or permissions are insufficient
    */
   async verifyCredentials(): Promise<void> {
     try {
@@ -65,8 +94,9 @@ Please ensure you have:
       const { data } = await this.client.v2.me();
       logger.info('X API credentials verified successfully', { userId: data.id });
     } catch (error) {
-      if (error instanceof ApiResponseError) {
-        if (error.code === 401) {
+      if (error instanceof Error && 'code' in error) {
+        const apiError = error as ApiResponseError;
+        if (apiError.code === 401) {
           throw new Error(
             'Invalid X API credentials. Please check:\n' +
             '1. API Key and Secret are correct\n' +
@@ -74,7 +104,7 @@ Please ensure you have:
             '3. Tokens have not expired or been revoked'
           );
         }
-        if (error.code === 403) {
+        if (apiError.code === 403) {
           throw new Error(
             'Account does not have required permissions. Please verify:\n' +
             '1. OAuth 1.0a is enabled in Developer Portal\n' +
@@ -90,9 +120,42 @@ Please ensure you have:
   }
 
   /**
-   * Create a poll post
-   * @param pollData Poll configuration
-   * @returns Created poll data
+   * Upload an image to X's media server
+   * @param imagePath Path to the image file to upload
+   * @returns The media ID assigned by X
+   * @throws Error if the upload fails or the file format is not supported
+   */
+  private async uploadImage(imagePath: string): Promise<string> {
+    try {
+      const imageBuffer = await fs.readFile(imagePath);
+      const mimeType = this.getMimeType(imagePath);
+      
+      logger.info('Uploading image', { 
+        imagePath,
+        mimeType,
+        size: imageBuffer.length 
+      });
+
+      const mediaId = await this.client.v1.uploadMedia(imageBuffer, {
+        mimeType: mimeType
+      });
+
+      logger.info('Image uploaded successfully', { mediaId });
+      return mediaId;
+    } catch (error) {
+      logger.error('Error uploading image', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        imagePath 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Create a poll post. If an image is provided, it will be posted as a separate tweet in a thread.
+   * @param pollData The poll configuration including title, options, duration, and optional image
+   * @returns The created poll data from X API
+   * @throws Error if poll creation fails or requirements are not met
    */
   async createPoll(pollData: PollData): Promise<unknown> {
     try {
@@ -109,36 +172,49 @@ Please ensure you have:
 
       const duration = (pollData.durationHours || this.defaultDurationHours) * 60; // Convert hours to minutes
       
-      logger.info('Creating poll', { 
-        title: pollData.title, 
-        options: pollData.options, 
-        durationMinutes: duration 
-      });
+      // If image is provided, post it first
+      let reply_to: string | undefined;
+      if (pollData.imagePath) {
+        const mediaId = await this.uploadImage(pollData.imagePath);
+        const imagePost = await this.client.v2.tweet({
+          text: pollData.title,
+          media: { media_ids: [mediaId] }
+        });
+        reply_to = imagePost.data.id;
+        logger.info('Image post created successfully', { tweetId: reply_to });
+      }
 
-      const tweet = await this.client.v2.tweet({
-        text: pollData.title,
+      // Create poll as a reply if there was an image, or as a standalone tweet if not
+      const tweetParams: SendTweetV2Params = {
+        text: reply_to ? '投票をお願いします！' : pollData.title,
         poll: {
           options: pollData.options,
           duration_minutes: duration
         }
-      });
+      };
 
+      if (reply_to) {
+        tweetParams.reply = { in_reply_to_tweet_id: reply_to };
+      }
+
+      const tweet = await this.client.v2.tweet(tweetParams);
       logger.info('Poll created successfully', { tweetId: tweet.data.id });
       return tweet.data;
 
     } catch (error) {
-      if (error instanceof ApiResponseError) {
+      if (error instanceof Error && 'code' in error) {
+        const apiError = error as ApiResponseError;
         logger.error('X API error', {
-          code: error.code,
-          message: error.data?.detail || error.message,
-          rateLimitRemaining: error.rateLimit?.remaining,
-          resetAt: error.rateLimit?.reset
+          code: apiError.code,
+          message: apiError.data?.detail || apiError.message,
+          rateLimitRemaining: apiError.rateLimit?.remaining,
+          resetAt: apiError.rateLimit?.reset
         });
         
-        if (error.code === 429) {
+        if (apiError.code === 429) {
           throw new Error('Rate limit exceeded. Please try again later.');
         }
-        if (error.code === 403) {
+        if (apiError.code === 403) {
           throw new Error(
             'Unable to create poll. Please verify:\n' +
             '1. OAuth 1.0a is enabled in Developer Portal\n' +
@@ -161,8 +237,9 @@ Please ensure you have:
 
   /**
    * Schedule a poll to be created at a specific time
-   * @param pollData Poll configuration
+   * @param pollData The poll configuration to schedule
    * @param scheduledTime When to post the poll
+   * @throws Error if scheduling fails or the scheduled time is invalid
    */
   async schedulePoll(pollData: PollData, scheduledTime: Date): Promise<void> {
     try {
@@ -208,7 +285,7 @@ Please ensure you have:
   }
 
   /**
-   * Cancel all scheduled polls
+   * Cancel all scheduled polls and clear the schedule
    */
   cancelScheduledPolls(): void {
     for (const poll of this.scheduledPolls) {
