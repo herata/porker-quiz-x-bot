@@ -1,0 +1,40 @@
+{
+  "name": "porker-quiz-bot",
+  "version": "1.0.0",
+  "description": "A Twitter/X bot for creating and managing automated polls with customizable options and scheduling",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-esm src/index.ts",
+    "watch": "tsc -w",
+    "lint": "eslint src/",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "twitter",
+    "bot",
+    "poll",
+    "automation",
+    "social-media"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "node-cron": "^3.0.0",
+    "twitter-api-v2": "^1.20.2",
+    "winston": "^3.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.80",
+    "@types/node-cron": "^3.0.0",
+    "nodemon": "^2.0.22",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.5"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
